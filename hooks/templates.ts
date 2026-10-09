@@ -6,6 +6,8 @@
 export type Template = {
   id: string
   name: string
+  // Names this reminder went by before, so a store that saved one is moved to the current name.
+  formerNames?: readonly string[]
   emoji: string
   color: string
   // The pop-up's headline, and what the interval counts ("20 min" + "of screen time").
@@ -59,7 +61,8 @@ export const TEMPLATES: readonly Template[] = [
   },
   {
     id: 'eyes',
-    name: 'Eyes',
+    name: 'Rest eyes',
+    formerNames: ['Eyes'],
     emoji: '👀',
     color: '#f2c14e',
     headline: 'Rest your eyes',

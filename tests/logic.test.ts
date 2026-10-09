@@ -94,7 +94,7 @@ test('the recommended intervals can be put back, leaving what is on or off and y
   expect(useRecommended(back.snap, T0 + 2 * MIN).changed).toEqual([])
 
   const old = useRecommended(fresh(), T0)
-  expect(old.changed).toEqual(['Water 60', 'Eyes 20', 'Stretch 30', 'Walk 60'])
+  expect(old.changed).toEqual(['Water 60', 'Rest eyes 20', 'Stretch 30', 'Walk 60'])
 })
 
 test('a store that is from the first version moves over, keeps its settings, and gains Medicine switched off', async () => {
@@ -316,13 +316,13 @@ test('/breaks answers status, done, snooze, set, on and off, and a name it does 
   expect(runBreaksCommand('help', snap, at).text).toContain('/breaks add')
 
   const done = runBreaksCommand('done', snap, at)
-  expect(done.text).toBe('Nice. Eyes will charge again from now.')
+  expect(done.text).toBe('Nice. Rest eyes will charge again from now.')
   expect(done.snap?.clocks.eyes?.since).toBe(at)
   expect(runBreaksCommand('done', snap, T0 + MIN).text).toBe('Nothing is due yet.')
   expect(runBreaksCommand('done all', snap, at).snap?.clocks.walk?.since).toBe(at)
   expect(runBreaksCommand('done tea', snap, at).text).toContain('No reminder called "tea"')
 
-  expect(runBreaksCommand('snooze eyes 15', snap, at).text).toBe('Snoozed Eyes. It comes back in 15 min.')
+  expect(runBreaksCommand('snooze eyes 15', snap, at).text).toBe('Snoozed Rest eyes. It comes back in 15 min.')
   expect(find(runBreaksCommand('set wat 40', snap, at).snap!, 'water')?.everyMin).toBe(40)
   expect(runBreaksCommand('set water', snap, at).text).toContain('Usage')
   expect(find(runBreaksCommand('off walk', snap, at).snap!, 'walk')?.enabled).toBe(false)
@@ -358,7 +358,7 @@ test('/breaks defaults sets the built-in reminders to the recommended intervals'
   const snap = fresh()
   const used = runBreaksCommand('defaults', snap, T0)
 
-  expect(used.text).toBe('Recommended intervals set (minutes): Water 60, Eyes 20, Stretch 30, Walk 60.')
+  expect(used.text).toBe('Recommended intervals set (minutes): Water 60, Rest eyes 20, Stretch 30, Walk 60.')
   expect(find(used.snap!, 'eyes')?.everyMin).toBe(20)
   expect(runBreaksCommand('defaults', used.snap!, T0).text).toContain('already use the recommended')
   expect(runBreaksCommand('help', snap, T0).text).toContain('/breaks defaults')
@@ -404,4 +404,16 @@ test('/breaks update turns the weekly look on and off, and asks for a look when 
   expect(runBreaksCommand('update off', setCheckUpdates(snap, true), T0).snap?.update.check).toBe(false)
   expect(runBreaksCommand('update soon', snap, T0).text).toContain('Usage')
   expect(runBreaksCommand('status', recordCheck(snap, T0, '99.0.0'), T0).text).toContain('Version 99.0.0 is out')
+})
+
+test('the Eyes reminder is now called Rest eyes, unless the person gave it a name of their own', async () => {
+  const saved = (name: string) => ({
+    reminders: [{ id: 'eyes', name, emoji: '👀', color: '#f2c14e', everyMin: 30, enabled: true, resetOnAway: true, builtIn: true }],
+    seeded: ['eyes'],
+  })
+
+  expect(find(normalize(saved('Eyes'), T0), 'eyes')?.name).toBe('Rest eyes')
+  expect(find(normalize(saved('Screen rest'), T0), 'eyes')?.name).toBe('Screen rest')
+  expect(lookup(normalize(undefined, T0), 'eyes')?.name).toBe('Rest eyes')
+  expect(lookup(normalize(undefined, T0), 'rest')?.id).toBe('eyes')
 })

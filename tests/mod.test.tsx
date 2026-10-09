@@ -273,7 +273,7 @@ test('/breaks sets, snoozes and pauses, and nothing comes up while it is paused'
   const { opened, clock } = stubEngine(on)
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
 
-  expect((await runBreaks($, 'set eyes 10')).text).toBe('Eyes will remind you every 10 min.')
+  expect((await runBreaks($, 'set eyes 10')).text).toBe('Rest eyes will remind you every 10 min.')
   await runBreaks($, 'pause')
   await clock.advance(60 * MIN)
   expect(popups(opened)).toBe(0)
@@ -339,7 +339,7 @@ test('/breaks defaults moves the built-in reminders to the recommended intervals
   const { data } = stubEngine(on)
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
 
-  expect((await runBreaks($, 'defaults')).text).toBe('Recommended intervals set (minutes): Water 60, Eyes 20, Stretch 30, Walk 60.')
+  expect((await runBreaks($, 'defaults')).text).toBe('Recommended intervals set (minutes): Water 60, Rest eyes 20, Stretch 30, Walk 60.')
   expect(data().reminders.map(reminder => reminder.everyMin)).toEqual([60, 20, 30, 60, 480])
 })
 

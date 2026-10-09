@@ -38,6 +38,11 @@ const fromTemplate = (template: Template): Reminder => ({
   builtIn: true,
 })
 
+// A built-in reminder saved under a name it used to have takes its current one; a name the
+// person typed themselves stays.
+const renamed = (template: Template | undefined, saved: string): string =>
+  template?.formerNames?.includes(saved) === true ? template.name : saved
+
 // One saved reminder, checked again: the store may hold an older or a broken shape.
 function parseReminder(raw: unknown): Reminder | undefined {
   const saved = record(raw)
@@ -52,7 +57,7 @@ function parseReminder(raw: unknown): Reminder | undefined {
 
   return {
     id,
-    name: text(saved.name, base?.name ?? id).slice(0, MAX_NAME),
+    name: renamed(template, text(saved.name, base?.name ?? id)).slice(0, MAX_NAME),
     emoji: text(saved.emoji, base?.emoji ?? '⏰'),
     color: /^#[0-9a-fA-F]{6}$/.test(String(saved.color)) ? String(saved.color) : (base?.color ?? CUSTOM_COLORS[0] ?? '#f2994a'),
     everyMin: everyOf(saved.everyMin, base?.everyMin ?? 60),

@@ -56,7 +56,7 @@ New versions land on this repository's `main` branch. A mod cannot reach the net
 
 | Reminder | Every | Why this number |
 |---|---|---|
-| 👀 **Eyes** | 20 min | The American Optometric Association's [20-20-20 rule](https://www.aoa.org/healthy-eyes/eye-and-vision-conditions/computer-vision-syndrome): every 20 minutes, look at something 20 feet away for 20 seconds. |
+| 👀 **Rest eyes** | 20 min | The American Optometric Association's [20-20-20 rule](https://www.aoa.org/healthy-eyes/eye-and-vision-conditions/computer-vision-syndrome): every 20 minutes, look at something 20 feet away for 20 seconds. |
 | 🧘 **Stretch** | 30 min | Ergonomics guidance counts a break of [under two minutes](https://www.umaryland.edu/ehs/occupational-safety-and-health/ergonomics) as a micro-break, with a brief break every 30 to 60 minutes. Thirty sits at the short end. |
 | 💧 **Water** | 60 min | A glass an hour over a working day is about 8 cups, which covers most of the 9 to 13 cups of fluid a day that [Cleveland Clinic](https://health.clevelandclinic.org/how-much-water-do-you-need-daily) gives as a starting point. |
 | 🚶 **Walk** | 60 min | Studies of breaking up sitting used 3 to 5 minutes of light walking every 30 minutes ([Wennberg 2016](https://pmc.ncbi.nlm.nih.gov/articles/PMC4769400); Diaz 2023). Every hour is the practical compromise. |
@@ -149,7 +149,7 @@ A hooks module's `$` can only be passed to functions declared in the same file, 
 
 ```
 claude plugin validate .     # reads the manifest, the marketplace file and the hooks module
-claude plugin test .         # 41 tests, with a mocked clock and store
+claude plugin test .         # 42 tests, with a mocked clock and store
 ```
 
 To release a new version, change `version` in `.claude-plugin/plugin.json` and `VERSION` in `hooks/version.ts` together, then push to `main`. People who switched on the weekly look are told the next time a session starts.
