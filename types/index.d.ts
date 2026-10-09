@@ -25,6 +25,18 @@ export type Settings = {
 // the pop-up was already sent for, so a cycle announces once.
 export type Clock = { since: number; firedFor: number }
 
+// Whether a newer version of the mod is out. Looking costs a web request that Claude Code asks
+// permission for, so it only happens when `check` is on (or when the person asks for it).
+export type UpdateState = {
+  // Look once a week, when a session starts.
+  check: boolean
+  // When it last looked, and the newest version it saw ('' before the first look).
+  checkedAt: number
+  latest: string
+  // The version the person was last told about, so a version is announced once.
+  toldAbout: string
+}
+
 // Everything the mod keeps in `$.store`, under one key, and mirrors in `$.state` to draw from.
 export type Snapshot = {
   settings: Settings
@@ -37,6 +49,7 @@ export type Snapshot = {
   pausedAt: number | null
   // The last time the person sent a prompt, from any session.
   lastActiveAt: number
+  update: UpdateState
 }
 
 // The pop-up: which reminders it announces, and the fun fact picked for each (an index into

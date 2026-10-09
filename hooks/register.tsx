@@ -13,6 +13,7 @@ import {
   factOf,
   find,
   itemsOf,
+  listNames,
   markDone,
   markFired,
   messageFor,
@@ -24,6 +25,7 @@ import {
   restoreBuiltIns,
   resume,
   setAway,
+  setCheckUpdates,
   setEvery,
   setSound,
   snooze,
@@ -31,6 +33,7 @@ import {
   whyOf,
 } from './reminders'
 import { settingsPane } from './settings'
+import { isCheckDue, markTold, MANIFEST_URL, newerThan, parseVersion, recordCheck, unannounced, UPDATE_HOW, VERSION } from './version'
 
 const SETTINGS = 'breaks-settings'
 const ALERT = 'breaks-alert'
@@ -92,7 +95,7 @@ function toastText(snap: Snapshot, alert: Alert): string {
   }
 
   const fact = factOf(first, alert.facts[first.id] ?? 0)
-  const more = alert.ids.length > 1 ? `\n\n(and ${alert.ids.length - 1} more are ready)` : ''
+  const more = alert.ids.length > 1 ? `\n\n(+${alert.ids.length - 1} more due)` : ''
 
   return `${messageFor(first, snap.clocks[first.id]?.since ?? 0)}\n\n${whyOf(first)}${fact === undefined ? '' : `\n\nDid you know? ${fact}`}${more}`
 }
@@ -165,6 +168,46 @@ async function tick($: EngineInterface): Promise<void> {
   }
 }
 
+// Looks on GitHub for a newer version, and says what it found. A hook has no network of its own,
+// so this is a WebFetch tool call: Claude Code shows its usual permission prompt the first time.
+// Only digits are read from the answer, so nothing the page says can steer anything.
+async function lookForUpdate($: EngineInterface, isManual: boolean): Promise<string> {
+  const { snap, now } = await refresh($)
+  let latest: string | undefined
+
+  try {
+    const answer = await $.tool.call({ tool: 'WebFetch', url: MANIFEST_URL, prompt: 'Reply with only the value of the "version" field.' })
+
+    const fetched = 'result' in answer ? (answer.result as { result?: unknown } | undefined)?.result : undefined
+
+    latest = parseVersion(answer.text ?? (typeof fetched === 'string' ? fetched : undefined))
+  } catch {
+    latest = undefined
+  }
+
+  const looked = recordCheck(snap, now, latest)
+  const newer = newerThan(looked.update)
+  const told = unannounced(looked.update) !== undefined
+
+  await commit($, newer !== undefined && (isManual || told) ? markTold(looked) : looked)
+
+  if (latest === undefined) {
+    return 'I could not read the latest version from GitHub. You may be offline, or the request was declined.'
+  }
+
+  if (newer === undefined) {
+    return `You have the latest version (${VERSION}).`
+  }
+
+  const text = `breaks ${newer} is out (you have ${VERSION}).\n${UPDATE_HOW}`
+
+  if (!isManual && told) {
+    $.ui.toast(text, { timeoutMs: 30_000 })
+  }
+
+  return text
+}
+
 // The session starts with the cooldowns where they were left. After a long gap, a morning say,
 // everything starts fresh instead of arriving as a pile of pop-ups.
 async function start($: EngineInterface): Promise<void> {
@@ -176,6 +219,11 @@ async function start($: EngineInterface): Promise<void> {
   ticker = $.clock.every(TICK_MS, () => {
     void tick($)
   })
+
+  // Weekly, and only if the person turned it on; it never holds up the start of a session.
+  if (isCheckDue(away.snap.update, now)) {
+    void lookForUpdate($, false)
+  }
 }
 
 // Acts on the store as it is now, not on what was drawn: a press may be of a stale frame.
@@ -231,7 +279,7 @@ async function addFromText($: EngineInterface, input: string): Promise<void> {
   }
 
   await commit($, added)
-  $.ui.toast(`Added ${parsed.emoji} ${parsed.name}, every ${parsed.everyMin} min.`, { timeoutMs: 5000 })
+  $.ui.toast(`Added ${parsed.emoji} ${parsed.name}. It will remind you every ${parsed.everyMin} min.`, { timeoutMs: 5000 })
 }
 
 async function removeOne($: EngineInterface, id: string): Promise<void> {
@@ -245,7 +293,7 @@ export const register: Register = on => {
     await $.command.register({
       name: 'breaks',
       description: 'Cooldown reminders: water, eyes, stretch, walk, medicine and your own. /breaks opens the settings',
-      argumentHint: '[status | done | snooze | pause | resume | on | off | set | add | delete | restore | defaults | sound on|off | test]',
+      argumentHint: '[status | done | snooze | pause | resume | on | off | set | add | delete | restore | defaults | sound | update | test]',
     })
     await start($)
 
@@ -286,8 +334,8 @@ export const register: Register = on => {
       await commit($, away.snap)
 
       if (away.reset.length > 0) {
-        const emoji = away.reset.map(id => find(snap, id)?.emoji ?? '').join(' ')
-        $.ui.toast(`Welcome back. Your time away counted as a break: ${emoji}`, { timeoutMs: 6000 })
+        const names = listNames(away.reset.map(id => (find(snap, id)?.name ?? id).toLowerCase()))
+        $.ui.toast(`Welcome back! Your time away counts as a break, so ${names} start fresh.`, { timeoutMs: 6000 })
       }
     }
 
@@ -308,11 +356,15 @@ export const register: Register = on => {
       return {}
     }
 
+    if (outcome.check === true) {
+      return { text: await lookForUpdate($, true) }
+    }
+
     if (outcome.test === true) {
       const sample = readyIds(snap, now)[0] ?? itemsOf(snap, now)[0]?.reminder.id ?? snap.reminders[0]?.id
 
       if (sample === undefined) {
-        return { text: 'There are no reminders yet. Add one with /breaks add.' }
+        return { text: 'You have no reminders yet. Add one with /breaks add.' }
       }
 
       await announce($, snap, [sample], true)
@@ -412,6 +464,8 @@ export const register: Register = on => {
       sound: () => void change($, current => setSound(current, !current.settings.sound)),
       away: minutes => void change($, current => setAway(current, minutes)),
       pause: () => void change($, (current, at) => (current.pausedAt === null ? pause(current, at) : resume(current, at))),
+      checkUpdates: () => void change($, current => setCheckUpdates(current, !current.update.check)),
+      checkNow: () => void lookForUpdate($, true).then(text => $.ui.toast(text, { timeoutMs: 20_000 })),
     })
   })
 }

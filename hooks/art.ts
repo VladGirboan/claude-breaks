@@ -2,7 +2,7 @@ import { formatLeft } from './reminders'
 import type { Item } from './reminders'
 
 // The desktop's cooldown icons: a ring that charges clockwise around the reminder's emoji,
-// with the time left beside it. A ready ring pulses. One SVG for the whole row.
+// with the time left beside it. A ring that is due pulses. One SVG for the whole row.
 
 // Names and emoji can be a person's own, so they are escaped before they go into markup.
 export const escapeXml = (value: string): string => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -30,7 +30,7 @@ export function cooldownSvg(items: readonly Item[], isPaused: boolean): { source
     const cy = HEIGHT / 2
     const filled = CIRCUMFERENCE * item.charge.fraction
     const color = item.reminder.color
-    const label = item.charge.isReady ? 'ready' : formatLeft(item.charge.leftMs)
+    const label = formatLeft(item.charge.leftMs)
 
     return [
       item.charge.isReady && !isPaused ? `<circle class="halo" cx="${cx}" cy="${cy}" r="${R + 3}" fill="none" stroke="${color}" stroke-width="2"/>` : '',
@@ -48,6 +48,6 @@ export function cooldownSvg(items: readonly Item[], isPaused: boolean): { source
     source: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${HEIGHT}" viewBox="0 0 ${width} ${HEIGHT}"><style>${STYLE}</style>${parts.join('')}</svg>`,
     width,
     height: HEIGHT,
-    alt: items.map(item => `${item.reminder.name} ${item.charge.isReady ? 'ready' : formatLeft(item.charge.leftMs)}`).join(', '),
+    alt: items.map(item => `${item.reminder.name}: ${item.charge.isReady ? 'due now' : `${formatLeft(item.charge.leftMs)} left`}`).join(', '),
   }
 }

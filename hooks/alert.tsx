@@ -3,9 +3,9 @@ import type { ElementTable } from 'claude-code'
 import type { Reminder } from '../types'
 import type { Ui, SvgElement } from './band'
 import { heroSvg } from './hero'
-import { doneLabelOf, whyOf } from './reminders'
+import { doneLabelOf, headlineOf, whyOf } from './reminders'
 
-// The pop-up: a card for each reminder that is ready, with a picture, why it matters, a fun
+// The pop-up: a card for each reminder that is due, with a picture, why it matters, a fun
 // fact, and the buttons to start it again or put it off. The desktop draws a large animated
 // banner; the terminal, a bordered card in the reminder's color.
 
@@ -64,7 +64,7 @@ function terminalCard(ui: AlertUi, entry: AlertEntry, actions: AlertActions) {
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={reminder.color} paddingX={2} rowGap={1}>
       <Text bold color={reminder.color}>
-        {`${reminder.emoji}  ${reminder.name} is ready   ✦ · ˚ ✦ · ˚ ✦`}
+        {`${reminder.emoji}  ${headlineOf(reminder)}   ✦ · ˚ ✦ · ˚ ✦`}
       </Text>
       {words(ui, entry)}
       {buttons(ui, entry, actions)}
@@ -90,7 +90,7 @@ export function alertPane(ui: AlertUi, entries: readonly AlertEntry[], actions: 
 
   return (
     <Box flexDirection="column" rowGap={1}>
-      {entries.length === 0 ? <Text>All caught up. Nothing is waiting for you. ✓</Text> : ''}
+      {entries.length === 0 ? <Text>You're all caught up. Nothing is waiting. ✓</Text> : ''}
       {entries.map(entry => (Svg === undefined ? terminalCard(ui, entry, actions) : desktopCard(ui, entry, actions, Svg)))}
       <Button key="alert-dismiss" label={entries.length === 0 ? 'Close' : 'Dismiss'} dimColor onPress={actions.dismiss} />
     </Box>

@@ -2,21 +2,21 @@
 
 **Healthy-work cooldowns for Claude Code.** Water, eyes, stretch, walk, medicine, and anything you add, charging quietly above your prompt like skill cooldowns in a game.
 
-![Four cooldown icons charging: water, eyes, stretch and walk, with the eyes one lit up and ready](docs/cooldowns.png)
+![Four cooldown icons charging: water, eyes, stretch and walk, with the eyes one lit up and due now](docs/cooldowns.png)
 
 ## Why
 
 Working in Claude Code is easy to lose track of time in. You hand over a task, it works, you review, you hand over the next one, and suddenly it is three hours later. You have not had a drink, stood up or looked away from the screen since you started.
 
-`breaks` is the smallest thing that fixes that. It sits in a row above the prompt and shows a few cooldowns charging while you work. When one is full you get a friendly pop-up that says what to do, why it matters, and a fun fact. Press **Done** and it starts charging again. It never interrupts a reply, and it does not ask for anything while you are typing.
+`breaks` is the smallest thing that fixes that. It sits in a row above the prompt and shows a few cooldowns charging while you work. When one is full you get a friendly pop-up that says what to do, why it matters, and a fun fact. Press its button (Drank, Looked away, Stretched, Walked) and it starts charging again. It never interrupts a reply, and it does not ask for anything while you are typing.
 
 No timers to set, no separate app to keep open, and no one else to notice. Install it once and get on with your work.
 
-![The Water pop-up: a large banner with a water drop, the words Water is ready, and rising bubbles](docs/popup.png)
+![The Water pop-up: a large banner with a water drop, the words Time for some water, and rising bubbles](docs/popup.png)
 
 ## What you get
 
-- **Cooldowns above the prompt.** A ring fills around each icon, with the time left beside it (desktop app), or `💧 ◔ 31m` text (terminal). A ready one lights up and offers a button to start it again.
+- **Cooldowns above the prompt.** A ring fills around each icon, with the time left beside it (desktop app), or `💧 ◔ 31m` text (terminal). One that is due lights up, says `now`, and offers a button to mark it done and start it charging again.
 - **A pop-up that explains.** Why this break matters, in a sentence, and a random fun fact. A large animated banner on the desktop, a bordered card in the terminal. It lands between turns, not in the middle of a reply.
 - **Sensible defaults, all adjustable.** Intervals come from published guidance (see [Where the defaults come from](#where-the-defaults-come-from)).
 - **Your own reminders.** Add a snack, a plant to water or a prompt to breathe, with your own emoji and message.
@@ -36,12 +36,20 @@ Answer `y` to add the marketplace, then choose a scope. Needs Claude Code 2.1.28
 
 To try it from a folder instead, run `claude --plugin-dir <path to this folder>`.
 
+## Staying up to date
+
+New versions land on this repository's `main` branch. A mod cannot reach the network by itself, so there are three ways to hear about one:
+
+- **Let Claude Code update it.** Run `/plugin`, open **Marketplaces**, pick `breaks-marketplace` and turn on auto-update. Then run `/reload-plugins` after a session start tells you it changed.
+- **Let breaks look.** `/breaks update on` makes it check once a week, when a session starts, and tell you once when a newer version is out. It reads one file, `.claude-plugin/plugin.json`, through Claude Code's web fetch tool, so Claude Code asks permission the first time. Allow `raw.githubusercontent.com` and it stays quiet after that. It is off until you switch it on, and `/breaks update` (or **Check now** in the settings) looks whenever you ask.
+- **Pull it yourself.** If you cloned the repository and run it with `--plugin-dir`, `git pull` in that folder.
+
 ## Try it
 
 ```
 /breaks test      a sample pop-up, so you can see what it looks like
 /breaks           the settings
-/breaks status    what is charging and when it is ready
+/breaks status    what is charging, and how long is left
 ```
 
 ## Where the defaults come from
@@ -78,18 +86,20 @@ That is an emoji, a name, the minutes between reminders, and after a bar the lin
 
 ```
 /breaks                        open the settings
-/breaks status                 what is charging
-/breaks done [name]            start a reminder again (all ready ones when no name)
-/breaks snooze [name] [min]    ready again in 10 minutes, or the minutes given
-/breaks pause | resume         stop and restart every cooldown (a meeting, say)
+/breaks status                 what is charging, and how long is left
+/breaks done [name]            you took the break: charge it again (every due one if no name)
+/breaks snooze [name] [min]    remind me again in 10 minutes, or the minutes given
+/breaks pause | resume         hold every timer, then let them run again
 /breaks on <name> | off <name>
 /breaks set <name> <minutes>   how often a reminder comes
 /breaks add <emoji> <name> <minutes> | <message>   a reminder of your own
 /breaks delete <name>          remove a reminder
 /breaks restore                bring back the built-in reminders you deleted
 /breaks defaults               set the built-in reminders to the recommended intervals
-/breaks sound on | off
-/breaks test                   send a sample pop-up
+/breaks sound on | off         the chime (macOS only)
+/breaks update                 look for a newer version on GitHub
+/breaks update on | off        look once a week when a session starts
+/breaks test                   show a sample pop-up
 ```
 
 A name is the start of the reminder's name: `/breaks set wat 40` works.
@@ -99,13 +109,14 @@ A name is the start of the reminder's name: `/breaks set wat 40` works.
 - **It waits for a good moment.** Nothing pops up while Claude is mid-reply; it waits for the turn to end. The pop-up asks for the keyboard only when your prompt is empty, so it never takes keys from a message you are typing.
 - **One pop-up at a time.** Reminders that come due together share one pop-up with a card each.
 - **Stepping away counts.** If you send a prompt after 20 minutes of silence, eyes, stretch and walk are treated as taken. Water is not, because being away does not drink for you. Starting a session after a long gap starts every cooldown fresh instead of piling up pop-ups.
-- **Shared across sessions.** The cooldowns live in the plugin's store, so pressing Done in one session shows in the others, and a reminder does not pop up twice.
+- **Shared across sessions.** The cooldowns live in the plugin's store, so marking one done in one session shows in the others, and a reminder does not pop up twice.
 
 ## Limits
 
 - **The medicine reminder is a nudge, not advice.** It reminds you to look at your label or your prescriber's instructions. It knows nothing about your medicine, your dose or a missed one.
-- **It only reminds you while Claude Code is running.** Close it, or let the computer sleep, and the clocks keep going but nothing can tell you. When you come back, anything that came due shows as ready.
+- **It only reminds you while Claude Code is running.** Close it, or let the computer sleep, and the clocks keep going but nothing can tell you. When you come back, anything that came due shows as due.
 - **The pop-up is only seen inside the app.** If you are in another window you will miss it. On a terminal too narrow for a pane (under about 144 columns, when it opens by itself) the pop-up becomes one long toast with the same words.
+- **Update checks are opt-in.** Looking costs a web request that Claude Code has to ask your permission for, so breaks does not do it behind your back.
 - **The chime plays on macOS only.** Claude Code gives a mod no sound player elsewhere, so on Windows and Linux the pop-up and the lit icon are the signal. Turn the chime off in the settings if you like.
 - **Two sessions saving in the same instant** can lose one change. It is a small file of settings and times, and the next tick puts it right.
 - **The pictures above are drawn by the mod's own code, not screenshots of Claude Code.**
@@ -119,6 +130,7 @@ hooks/hooks.json                  names the module
 hooks/register.tsx                wiring: events, the timer, the store, the pop-up
 hooks/reminders.ts                the reminders and every rule that charges them (pure)
 hooks/templates.ts                the built-in reminders: wording, why each matters, facts, default intervals
+hooks/version.ts                  this version, and how a newer one is recognized
 hooks/command.ts                  what /breaks does (pure)
 hooks/band.tsx                    the row above the prompt
 hooks/alert.tsx                   the pop-up card, in the terminal and on the desktop
@@ -137,8 +149,10 @@ A hooks module's `$` can only be passed to functions declared in the same file, 
 
 ```
 claude plugin validate .     # reads the manifest, the marketplace file and the hooks module
-claude plugin test .         # 35 tests, with a mocked clock and store
+claude plugin test .         # 41 tests, with a mocked clock and store
 ```
+
+To release a new version, change `version` in `.claude-plugin/plugin.json` and `VERSION` in `hooks/version.ts` together, then push to `main`. People who switched on the weekly look are told the next time a session starts.
 
 To add a built-in reminder, add an entry to `TEMPLATES` in `hooks/templates.ts`, with its wording, why it matters, a few facts and the source for each. A person who already has the mod is given it once, the next time it starts. Keep the facts plain and true, and never turn a health reminder into advice.
 

@@ -1,5 +1,6 @@
 import type { Reminder } from '../types'
 import { escapeXml } from './art'
+import { headlineOf, sinceOf } from './reminders'
 
 // The desktop pop-up's picture: a wide banner in the reminder's color, with its emoji large on
 // the left inside rings that ripple outward, the headline beside it, and bubbles (for water) or
@@ -10,7 +11,7 @@ const HEIGHT = 150
 
 const STYLE = [
   // The drawing cannot see the app's theme, so it follows the system's.
-  '.h{fill:#202124;font:700 27px system-ui,sans-serif}.s{fill:#5f6368;font:14px system-ui,sans-serif}',
+  '.h{fill:#202124;font:700 25px system-ui,sans-serif}.s{fill:#5f6368;font:14px system-ui,sans-serif}',
   '@media (prefers-color-scheme:dark){.h{fill:#f1f3f4}.s{fill:#b4bac0}}',
   '.ring{transform-box:fill-box;transform-origin:center;animation:ripple 2.6s ease-out infinite}',
   '@keyframes ripple{from{transform:scale(1);opacity:.65}to{transform:scale(1.9);opacity:0}}',
@@ -48,10 +49,11 @@ export function heroSvg(reminder: Reminder): { source: string; width: number; he
   const color = reminder.color
   const next = sequence(reminder.id)
   const isWater = reminder.id === 'water'
+  const headline = headlineOf(reminder)
   const bits: string[] = []
 
   for (let i = 0; i < 16; i += 1) {
-    const x = 400 + next() * 118
+    const x = 470 + next() * 52
     const y = 24 + next() * 100
     const delay = (next() * 3).toFixed(2)
     const size = 0.6 + next() * 0.9
@@ -73,10 +75,11 @@ export function heroSvg(reminder: Reminder): { source: string; width: number; he
     `<rect x="1" y="1" width="${WIDTH - 2}" height="${HEIGHT - 2}" rx="20" fill="url(#g)" stroke="${color}" stroke-opacity=".45" stroke-width="1.5"/>`,
     bits.join(''),
     `<g transform="translate(88 75)">${rings}<circle r="44" fill="${color}" fill-opacity=".2"/><text class="pop" y="4" font-size="54" text-anchor="middle" dominant-baseline="central">${escapeXml(reminder.emoji)}</text></g>`,
-    `<text class="h" x="168" y="70">${escapeXml(reminder.name)} is ready</text>`,
-    `<text class="s" x="168" y="98">fully charged after ${everyText(reminder.everyMin)}</text>`,
+    // A long name is squeezed to fit before the sparkles instead of running into them.
+    `<text class="h" x="168" y="70"${headline.length > 22 ? ' textLength="296" lengthAdjust="spacingAndGlyphs"' : ''}>${escapeXml(headline)}</text>`,
+    `<text class="s" x="168" y="98">${escapeXml(`${everyText(reminder.everyMin)} ${sinceOf(reminder)}`)}</text>`,
     '</svg>',
   ].join('')
 
-  return { source, width: WIDTH, height: HEIGHT, alt: `${reminder.name} is ready` }
+  return { source, width: WIDTH, height: HEIGHT, alt: `${headline}. ${everyText(reminder.everyMin)} ${sinceOf(reminder)}.` }
 }

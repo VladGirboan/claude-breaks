@@ -8,7 +8,10 @@ export type Template = {
   name: string
   emoji: string
   color: string
-  // The button that says it is done once the reminder is ready.
+  // The pop-up's headline, and what the interval counts ("20 min" + "of screen time").
+  headline: string
+  since: string
+  // The button that says it is done once the reminder is due.
   doneLabel: string
   defaultEveryMin: number
   defaultEnabled: boolean
@@ -26,6 +29,8 @@ export const TEMPLATES: readonly Template[] = [
     name: 'Water',
     emoji: '💧',
     color: '#4fb3e8',
+    headline: 'Time for some water',
+    since: 'since your last drink',
     doneLabel: 'Drank',
     // A glass an hour over a working day is about 8 cups: the 9 to 13 cups of fluid a day that
     // Cleveland Clinic gives as a starting point, less what you drink away from your desk.
@@ -33,9 +38,9 @@ export const TEMPLATES: readonly Template[] = [
     defaultEnabled: true,
     resetOnAway: false,
     messages: [
-      'Time for a glass of water. 💧',
-      'Your water is fully charged. A few sips go a long way. 💧',
-      'Hydration check: grab some water while Claude works. 💧',
+      'Time for some water. 💧',
+      'A glass of water is waiting for you. 💧',
+      'Grab a drink while Claude works. 💧',
     ],
     why: 'Even mild dehydration can bring on headaches, tiredness and trouble focusing. Small, regular sips are an easy way to keep up.',
     facts: [
@@ -57,6 +62,8 @@ export const TEMPLATES: readonly Template[] = [
     name: 'Eyes',
     emoji: '👀',
     color: '#f2c14e',
+    headline: 'Rest your eyes',
+    since: 'of screen time',
     doneLabel: 'Looked away',
     // The American Optometric Association's 20-20-20 rule: every 20 minutes, 20 seconds, 20 feet.
     defaultEveryMin: 20,
@@ -64,7 +71,7 @@ export const TEMPLATES: readonly Template[] = [
     resetOnAway: true,
     messages: [
       'Rest your eyes: look at something 20 feet away for 20 seconds. 👀',
-      'Eye break! Look out of a window for a moment. 👀',
+      'Look away from the screen for a moment. A window is perfect. 👀',
     ],
     why: 'We blink far less when we stare at a screen, which can leave eyes dry, blurry and achy. Looking into the distance gives them a rest.',
     facts: [
@@ -84,6 +91,8 @@ export const TEMPLATES: readonly Template[] = [
     name: 'Stretch',
     emoji: '🧘',
     color: '#b794f4',
+    headline: 'Time to stretch',
+    since: 'since you last moved',
     doneLabel: 'Stretched',
     // Ergonomics guidance: a micro-break under two minutes, with a longer break every 30 to 60
     // minutes (University of Maryland, Environmental Safety). Every 30 sits at the short end.
@@ -91,8 +100,8 @@ export const TEMPLATES: readonly Template[] = [
     defaultEnabled: true,
     resetOnAway: true,
     messages: [
-      'Stretch time: roll your shoulders and reach up high. 🧘',
-      'Unclench your jaw, drop your shoulders, stretch your neck. 🧘',
+      'Time to stretch: roll your shoulders and reach up high. 🧘',
+      'Drop your shoulders, unclench your jaw, stretch your neck. 🧘',
     ],
     why: 'Sitting still for long stretches leaves the neck, shoulders and hips stiff. A short stretch or a stand-up is an easy reset.',
     facts: [
@@ -109,6 +118,8 @@ export const TEMPLATES: readonly Template[] = [
     name: 'Walk',
     emoji: '🚶',
     color: '#6fcf97',
+    headline: 'Time for a walk',
+    since: 'since you last walked',
     doneLabel: 'Walked',
     // A few minutes of light walking each hour. Studies of breaking up sitting used 3 to 5
     // minutes every 30 minutes (Wennberg 2016; Diaz 2023); an hour is the practical compromise.
@@ -116,8 +127,8 @@ export const TEMPLATES: readonly Template[] = [
     defaultEnabled: true,
     resetOnAway: true,
     messages: [
-      'Walk break: stand up, a lap around the room counts. 🚶',
-      'Time to move. Take a short walk while the code simmers. 🚶',
+      'Time for a walk. Even a lap around the room counts. 🚶',
+      'Stand up and move while Claude works. 🚶',
     ],
     why: 'Walking gets your blood moving and breaks up long stretches of sitting. Even a few minutes counts.',
     facts: [
@@ -137,6 +148,8 @@ export const TEMPLATES: readonly Template[] = [
     name: 'Medicine',
     emoji: '💊',
     color: '#f28b82',
+    headline: 'Time for your medicine',
+    since: 'since your last dose',
     doneLabel: 'Took it',
     // There is no recommended interval: it is whatever the label or the prescriber says. Eight
     // hours is a placeholder, and the reminder ships switched off.
@@ -144,7 +157,7 @@ export const TEMPLATES: readonly Template[] = [
     defaultEnabled: false,
     resetOnAway: false,
     messages: [
-      'Medicine reminder: check your label and take your dose. 💊',
+      'Medicine time. Check your label, then take your dose. 💊',
       'Time for your medicine. 💊',
     ],
     why: 'Medicines work best when taken the way the label or your prescriber says, and it is easy to forget when you are deep in work. This is a reminder, not medical advice, and it does not know your dose.',

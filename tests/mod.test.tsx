@@ -2,7 +2,7 @@ import type { On, RenderElement } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
-import { normalize, setEvery } from '../hooks/reminders'
+import { normalize, setCheckUpdates, setEvery } from '../hooks/reminders'
 import type { Snapshot } from '../types'
 
 const MIN = 60_000
@@ -98,7 +98,7 @@ test('on the desktop the cooldowns are rings in one picture, a ready one opens t
 
   const band = await $.ui.mount(BAND('desktop'))
   const picture = (await band.find({ type: 'Svg' })) as { props: { source: string; alt: string } } | undefined
-  expect(picture?.props.alt).toContain('Water 45m')
+  expect(picture?.props.alt).toContain('Water: 45m left')
   expect(picture?.props.alt).not.toContain('Medicine')
   expect(picture?.props.source).toContain('stroke-dasharray')
   expect(await band.find({ key: 'done-eyes' })).toBeUndefined()
@@ -125,7 +125,7 @@ test('the desktop pop-up is a large picture, why it matters, a fun fact and butt
 
   const popup = await $.ui.mount(ALERT('desktop'))
   const hero = (await popup.find({ type: 'Svg' })) as { props: { source: string; alt: string; width: number; height: number } } | undefined
-  expect(hero?.props.alt).toBe('Eyes is ready')
+  expect(hero?.props.alt).toBe('Rest your eyes. 30 min of screen time.')
   expect(hero?.props.height).toBeGreaterThanOrEqual(150)
   expect(hero?.props.source).toContain('class="ring"')
   expect(await popup.find({ type: 'Text', text: /blink far less/ })).toBeDefined()
@@ -144,7 +144,7 @@ test('the terminal pop-up is a card with the same words, and Snooze puts it off'
 
   const popup = await $.ui.mount(ALERT('terminal'))
   expect(await popup.find({ type: 'Svg' })).toBeUndefined()
-  expect(await popup.find({ type: 'Text', text: /Eyes is ready/ })).toBeDefined()
+  expect(await popup.find({ type: 'Text', text: /Rest your eyes/ })).toBeDefined()
   expect(await popup.find({ type: 'Text', text: /blink far less/ })).toBeDefined()
   expect(await popup.find({ type: 'Text', text: /Did you know\?/ })).toBeDefined()
 
@@ -227,7 +227,7 @@ test('a reminder of your own is added from the pane and the prompt, shows in the
   const pane = await $.ui.mount(SETTINGS)
   await pane.input({ key: 'add', text: '🍎 Snack 90 | Time to eat something' })
   expect(data().reminders.find(reminder => reminder.id === 'custom-snack')).toMatchObject({ emoji: '🍎', everyMin: 90, message: 'Time to eat something' })
-  expect(toasts).toContain('Added 🍎 Snack, every 90 min.')
+  expect(toasts).toContain('Added 🍎 Snack. It will remind you every 90 min.')
   expect(await pane.find({ key: 'toggle-custom-snack' })).toBeDefined()
 
   await pane.input({ key: 'add', text: '🍎 Snack 30' })
@@ -235,11 +235,11 @@ test('a reminder of your own is added from the pane and the prompt, shows in the
   await pane.input({ key: 'add', text: '' })
   expect(toasts.at(-1)).toContain('Give it a name')
 
-  expect((await runBreaks($, 'add 🌿 Plants 120')).text).toBe('Added 🌿 Plants, every 120 min.')
+  expect((await runBreaks($, 'add 🌿 Plants 120')).text).toBe('Added 🌿 Plants. It will remind you every 120 min.')
   const band = await $.ui.mount(BAND('desktop'))
   const alt = ((await band.find({ type: 'Svg' })) as unknown as { props: { alt: string } }).props.alt
-  expect(alt).toContain('Snack 1h30')
-  expect(alt).toContain('Plants 2h')
+  expect(alt).toContain('Snack: 1h30 left')
+  expect(alt).toContain('Plants: 2h left')
 
   // The first press only asks; the second deletes.
   await pane.press({ key: 'delete-custom-snack' })
@@ -273,7 +273,7 @@ test('/breaks sets, snoozes and pauses, and nothing comes up while it is paused'
   const { opened, clock } = stubEngine(on)
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
 
-  expect((await runBreaks($, 'set eyes 10')).text).toBe('Eyes every 10 min.')
+  expect((await runBreaks($, 'set eyes 10')).text).toBe('Eyes will remind you every 10 min.')
   await runBreaks($, 'pause')
   await clock.advance(60 * MIN)
   expect(popups(opened)).toBe(0)
@@ -293,7 +293,7 @@ test('/breaks test shows a sample pop-up even when nothing is ready', async ($, 
   expect(popups(opened)).toBe(1)
 
   const popup = await $.ui.mount(ALERT('desktop'))
-  expect(((await popup.find({ type: 'Svg' })) as { props: { alt: string } } | undefined)?.props.alt).toBe('Water is ready')
+  expect(((await popup.find({ type: 'Svg' })) as { props: { alt: string } } | undefined)?.props.alt).toBe('Time for some water. 45 min since your last drink.')
   expect(await popup.find({ type: 'Text', text: /Did you know\?/ })).toBeDefined()
 })
 
@@ -348,4 +348,67 @@ test('a first run with nothing stored uses the recommended intervals', async ($,
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
 
   expect(data().reminders.map(reminder => reminder.everyMin)).toEqual([60, 20, 30, 60, 480])
+})
+
+// A store whose last look was long enough ago for the weekly look to be due.
+const weeklyLook = (): Snapshot => {
+  const snap = setCheckUpdates(fixture(), true)
+
+  return { ...snap, update: { ...snap.update, checkedAt: T0 - 8 * 24 * 60 * MIN } }
+}
+
+// What the fetch tool answers, so the update check can run without the network.
+function stubGitHub(on: On, version: string) {
+  const fetched: string[] = []
+
+  on('tool.call', { tool: 'WebFetch' }, (_$, e) => {
+    fetched.push(String(e.url))
+
+    return { result: { bytes: 1, code: 200, codeText: 'OK', result: version, durationMs: 1 } } as never
+  })
+
+  return fetched
+}
+
+test('with the weekly look on, a newer version is announced once, and not looked for again within the week', async ($, on) => {
+  const fetched = stubGitHub(on, 'version 9.0.0')
+  const { toasts, clock, data, store } = stubEngine(on, { entries: { data: weeklyLook() } })
+
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+  await clock.advance(1000)
+
+  expect(fetched).toEqual(['https://raw.githubusercontent.com/VladGirboan/claude-breaks/main/.claude-plugin/plugin.json'])
+  expect(data().update.latest).toBe('9.0.0')
+  expect(toasts.filter(text => text.includes('breaks 9.0.0 is out'))).toHaveLength(1)
+  expect(toasts.find(text => text.includes('breaks 9.0.0 is out'))).toContain('/plugin marketplace update')
+
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+  await clock.advance(1000)
+  expect(fetched).toHaveLength(1)
+
+  store.set('data', { ...data(), update: { ...data().update, checkedAt: T0 - 8 * 24 * 60 * MIN } })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+  await clock.advance(1000)
+  expect(fetched).toHaveLength(2)
+  expect(toasts.filter(text => text.includes('breaks 9.0.0 is out'))).toHaveLength(1)
+})
+
+test('nothing is looked up unless the person turned the weekly look on; /breaks update looks when asked', async ($, on) => {
+  const fetched = stubGitHub(on, '0.1.0')
+  const { clock } = stubEngine(on)
+
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+  await clock.advance(1000)
+  expect(fetched).toHaveLength(0)
+
+  expect((await runBreaks($, 'update')).text).toContain('You have the latest version')
+  expect(fetched).toHaveLength(1)
+})
+
+test('when GitHub cannot be read, /breaks update says so instead of guessing', async ($, on) => {
+  stubGitHub(on, 'the page was empty')
+  stubEngine(on)
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  expect((await runBreaks($, 'update')).text).toContain('could not read the latest version')
 })

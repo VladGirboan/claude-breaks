@@ -1,6 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { runBreaksCommand } from '../hooks/command'
+import { isCheckDue, isNewer, markTold, newerThan, parseVersion, recordCheck, unannounced, VERSION } from '../hooks/version'
 import {
   addReminder,
   awayReset,
@@ -25,6 +26,7 @@ import {
   removeReminder,
   restoreBuiltIns,
   resume,
+  setCheckUpdates,
   setEvery,
   snooze,
   stepFor,
@@ -291,7 +293,7 @@ test('every built-in reminder says why it matters and has facts; the medicine on
 })
 
 test('time left and the charge glyph read at a glance', async () => {
-  expect(formatLeft(0)).toBe('ready')
+  expect(formatLeft(0)).toBe('now')
   expect(formatLeft(30_000)).toBe('1m')
   expect(formatLeft(31 * MIN)).toBe('31m')
   expect(formatLeft(60 * MIN)).toBe('1h')
@@ -314,13 +316,13 @@ test('/breaks answers status, done, snooze, set, on and off, and a name it does 
   expect(runBreaksCommand('help', snap, at).text).toContain('/breaks add')
 
   const done = runBreaksCommand('done', snap, at)
-  expect(done.text).toBe('Started again: eyes.')
+  expect(done.text).toBe('Nice. Eyes will charge again from now.')
   expect(done.snap?.clocks.eyes?.since).toBe(at)
-  expect(runBreaksCommand('done', snap, T0 + MIN).text).toBe('Nothing is ready yet.')
+  expect(runBreaksCommand('done', snap, T0 + MIN).text).toBe('Nothing is due yet.')
   expect(runBreaksCommand('done all', snap, at).snap?.clocks.walk?.since).toBe(at)
   expect(runBreaksCommand('done tea', snap, at).text).toContain('No reminder called "tea"')
 
-  expect(runBreaksCommand('snooze eyes 15', snap, at).text).toBe('Snoozed eyes for 15 min.')
+  expect(runBreaksCommand('snooze eyes 15', snap, at).text).toBe('Snoozed Eyes. It comes back in 15 min.')
   expect(find(runBreaksCommand('set wat 40', snap, at).snap!, 'water')?.everyMin).toBe(40)
   expect(runBreaksCommand('set water', snap, at).text).toContain('Usage')
   expect(find(runBreaksCommand('off walk', snap, at).snap!, 'walk')?.enabled).toBe(false)
@@ -328,14 +330,14 @@ test('/breaks answers status, done, snooze, set, on and off, and a name it does 
   expect(find(runBreaksCommand('on med', snap, at).snap!, 'medicine')?.enabled).toBe(true)
   expect(runBreaksCommand('sound off', snap, at).snap?.settings.sound).toBe(false)
   expect(runBreaksCommand('pause', snap, at).snap?.pausedAt).toBe(at)
-  expect(runBreaksCommand('dance', snap, at).text).toContain('Unknown option')
+  expect(runBreaksCommand('dance', snap, at).text).toContain("I don't know")
 })
 
 test('/breaks adds your own reminder, deletes one, and restores the built-ins', async () => {
   const snap = fresh()
 
   const add = runBreaksCommand('add 🍎 Snack 90 | Time to eat something', snap, T0)
-  expect(add.text).toBe('Added 🍎 Snack, every 90 min.')
+  expect(add.text).toBe('Added 🍎 Snack. It will remind you every 90 min.')
   expect(find(add.snap!, 'custom-snack')?.message).toBe('Time to eat something')
   expect(runBreaksCommand('add', snap, T0).text).toContain('Give it a name')
   expect(runBreaksCommand('add 🍎 Water 10', snap, T0).text).toContain('already a reminder called')
@@ -347,8 +349,8 @@ test('/breaks adds your own reminder, deletes one, and restores the built-ins', 
   expect(runBreaksCommand('delete zzz', snap, T0).text).toContain('No reminder called "zzz"')
 
   const noWater = runBreaksCommand('remove water', snap, T0)
-  expect(noWater.text).toBe('Deleted Water. /breaks restore brings it back.')
-  expect(runBreaksCommand('restore', noWater.snap!, T0 + MIN).text).toBe('Restored: Water.')
+  expect(noWater.text).toBe('Deleted Water. You can bring it back with /breaks restore.')
+  expect(runBreaksCommand('restore', noWater.snap!, T0 + MIN).text).toBe('Restored Water.')
   expect(runBreaksCommand('restore', snap, T0).text).toContain('Nothing to restore')
 })
 
@@ -358,6 +360,48 @@ test('/breaks defaults sets the built-in reminders to the recommended intervals'
 
   expect(used.text).toBe('Recommended intervals set (minutes): Water 60, Eyes 20, Stretch 30, Walk 60.')
   expect(find(used.snap!, 'eyes')?.everyMin).toBe(20)
-  expect(runBreaksCommand('defaults', used.snap!, T0).text).toContain('already at the recommended')
+  expect(runBreaksCommand('defaults', used.snap!, T0).text).toContain('already use the recommended')
   expect(runBreaksCommand('help', snap, T0).text).toContain('/breaks defaults')
+})
+
+test('a version is read from what came back, and compared number by number', async () => {
+  expect(parseVersion('{"name":"breaks","version":"0.12.3"}')).toBe('0.12.3')
+  expect(parseVersion('Version: 1.0.0, released today')).toBe('1.0.0')
+  expect(parseVersion('no version here')).toBeUndefined()
+  expect(parseVersion(undefined)).toBeUndefined()
+  expect(isNewer('0.10.0', '0.9.9')).toBe(true)
+  expect(isNewer('0.1.1', '0.1.0')).toBe(true)
+  expect(isNewer('0.1.0', '0.1.0')).toBe(false)
+  expect(isNewer('0.0.9', '0.1.0')).toBe(false)
+})
+
+test('an update is announced once, and only when it is newer than this version', async () => {
+  const snap = normalize(undefined, T0)
+  expect(snap.update).toEqual({ check: false, checkedAt: 0, latest: '', toldAbout: '' })
+  expect(isCheckDue(snap.update, T0 + 99 * 24 * 60 * MIN)).toBe(false)
+
+  const DAY = 24 * 60 * MIN
+  const on = setCheckUpdates(snap, true)
+  expect(isCheckDue(on.update, T0 + 8 * DAY)).toBe(true)
+
+  const looked = recordCheck(on, T0, '99.0.0')
+  expect(isCheckDue(looked.update, T0 + 6 * DAY)).toBe(false)
+  expect(isCheckDue(looked.update, T0 + 7 * DAY)).toBe(true)
+  expect(unannounced(looked.update)).toBe('99.0.0')
+  expect(unannounced(markTold(looked).update)).toBeUndefined()
+  expect(newerThan(markTold(looked).update)).toBe('99.0.0')
+
+  // A look that failed keeps what was known; the same or an older version is no news.
+  expect(recordCheck(looked, T0 + MIN, undefined).update.latest).toBe('99.0.0')
+  expect(newerThan(recordCheck(snap, T0, VERSION).update)).toBeUndefined()
+})
+
+test('/breaks update turns the weekly look on and off, and asks for a look when given nothing', async () => {
+  const snap = normalize(undefined, T0)
+
+  expect(runBreaksCommand('update', snap, T0).check).toBe(true)
+  expect(runBreaksCommand('update on', snap, T0).snap?.update.check).toBe(true)
+  expect(runBreaksCommand('update off', setCheckUpdates(snap, true), T0).snap?.update.check).toBe(false)
+  expect(runBreaksCommand('update soon', snap, T0).text).toContain('Usage')
+  expect(runBreaksCommand('status', recordCheck(snap, T0, '99.0.0'), T0).text).toContain('Version 99.0.0 is out')
 })

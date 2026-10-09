@@ -1,4 +1,4 @@
-import type { Clock, Reminder, Snapshot } from '../types'
+import type { Clock, Reminder, Snapshot, UpdateState } from '../types'
 import { CUSTOM_COLORS, TEMPLATES, templateOf } from './templates'
 import type { Template } from './templates'
 
@@ -121,6 +121,18 @@ export function normalize(raw: unknown, now: number): Snapshot {
     seeded: [...given],
     pausedAt: typeof saved.pausedAt === 'number' ? saved.pausedAt : null,
     lastActiveAt: num(saved.lastActiveAt, now),
+    update: parseUpdate(saved.update),
+  }
+}
+
+function parseUpdate(raw: unknown): UpdateState {
+  const saved = record(raw)
+
+  return {
+    check: saved.check === true,
+    checkedAt: num(saved.checkedAt, 0),
+    latest: text(saved.latest, ''),
+    toldAbout: text(saved.toldAbout, ''),
   }
 }
 
@@ -261,6 +273,8 @@ export function toggle(snap: Snapshot, id: string, now: number): Snapshot {
 
 export const setSound = (snap: Snapshot, sound: boolean): Snapshot => ({ ...snap, settings: { ...snap.settings, sound } })
 
+export const setCheckUpdates = (snap: Snapshot, check: boolean): Snapshot => ({ ...snap, update: { ...snap.update, check } })
+
 export const setAway = (snap: Snapshot, minutes: number): Snapshot => ({
   ...snap,
   settings: { ...snap.settings, awayMin: clamp(Math.round(minutes), MIN_AWAY, MAX_AWAY) },
@@ -385,7 +399,7 @@ export function awayReset(snap: Snapshot, now: number, scope: 'prompt' | 'startu
 
 export function formatLeft(ms: number): string {
   if (ms <= 0) {
-    return 'ready'
+    return 'now'
   }
 
   const minutes = Math.ceil(ms / MINUTE)
@@ -399,7 +413,7 @@ export function formatLeft(ms: number): string {
   return rest === 0 ? `${minutes / 60}h` : `${Math.floor(minutes / 60)}h${String(rest).padStart(2, '0')}`
 }
 
-// A circle that fills a quarter at a time; solid only once it is ready.
+// A circle that fills a quarter at a time; solid only once it is due.
 export function glyphFor(charge: Charge): string {
   if (charge.isReady) {
     return '●'
@@ -408,6 +422,18 @@ export function glyphFor(charge: Charge): string {
   return charge.fraction < 0.25 ? '○' : charge.fraction < 0.5 ? '◔' : charge.fraction < 0.75 ? '◑' : '◕'
 }
 
+// The pop-up's headline: "Time for some water", or "Snack time" for one of your own.
+export const headlineOf = (reminder: Reminder): string =>
+  (reminder.builtIn ? templateOf(reminder.id)?.headline : undefined) ?? `${reminder.name} time`
+
+// What the interval counts, for the line beneath the headline: "20 min of screen time".
+export const sinceOf = (reminder: Reminder): string =>
+  (reminder.builtIn ? templateOf(reminder.id)?.since : undefined) ?? 'since your last one'
+
+// Names in a sentence: "water", "water and eyes", "water, eyes and walk".
+export const listNames = (names: readonly string[]): string =>
+  names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+
 // The toast's line. A built-in reminder's wording moves on each cycle, so it stays fresh.
 export function messageFor(reminder: Reminder, since: number): string {
   const template = reminder.builtIn ? templateOf(reminder.id) : undefined
@@ -415,7 +441,7 @@ export function messageFor(reminder: Reminder, since: number): string {
   return (
     template?.messages[Math.floor(since / MINUTE) % template.messages.length] ??
     reminder.message ??
-    `Time for ${reminder.name.toLowerCase()}. ${reminder.emoji}`
+    `${headlineOf(reminder)}. ${reminder.emoji}`
   )
 }
 
@@ -431,4 +457,4 @@ export const factCount = (reminder: Reminder): number => (reminder.builtIn ? (te
 export const whyOf = (reminder: Reminder): string =>
   (reminder.builtIn ? templateOf(reminder.id)?.why : undefined) ??
   reminder.message ??
-  `You asked to be reminded of ${reminder.name.toLowerCase()} every ${reminder.everyMin} minutes.`
+  `Your reminder for ${reminder.name.toLowerCase()}, every ${reminder.everyMin} minutes.`
