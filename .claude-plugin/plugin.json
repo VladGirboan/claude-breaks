@@ -1,0 +1,9 @@
+{
+  "name": "breaks",
+  "version": "0.1.0",
+  "description": "Cooldown-style reminders to drink water, rest your eyes, stretch, walk, take medicine and anything you add. Icons charge above the prompt like a skill cooldown; a pop-up with a fun fact says when one is ready.",
+  "author": { "name": "Vlad Girboan" },
+  "license": "MIT",
+  "keywords": ["claude-code-mods", "claude-mods", "function-hooks", "wellness", "reminders", "breaks"],
+  "types": "./types/index.d.ts"
+}

@@ -1,0 +1,12 @@
+{
+  "name": "breaks-marketplace",
+  "description": "Mods for Claude Code that keep you looking after yourself.",
+  "owner": { "name": "Vlad Girboan" },
+  "plugins": [
+    {
+      "name": "breaks",
+      "source": "./",
+      "description": "Cooldown-style reminders to drink water, rest your eyes, stretch, walk, take medicine and anything you add."
+    }
+  ]
+}
