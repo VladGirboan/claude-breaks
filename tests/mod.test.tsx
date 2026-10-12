@@ -100,7 +100,9 @@ test('on the desktop the cooldowns are rings in one picture, a ready one opens t
   const picture = (await band.find({ type: 'Svg' })) as { props: { source: string; alt: string } } | undefined
   expect(picture?.props.alt).toContain('Water: 45m left')
   expect(picture?.props.alt).not.toContain('Medicine')
-  expect(picture?.props.source).toContain('stroke-dasharray')
+  expect(picture?.props.source).toContain('class="track"')
+  // A drawing that animates replays from its start each time the host redraws the band: flicker.
+  expect(picture?.props.source).not.toContain('animation')
   expect(await band.find({ key: 'done-eyes' })).toBeUndefined()
   expect(await band.find({ key: 'settings' })).toBeDefined()
 

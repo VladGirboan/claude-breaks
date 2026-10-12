@@ -2,7 +2,7 @@ import { formatLeft } from './reminders'
 import type { Item } from './reminders'
 
 // The desktop's cooldown icons: a ring that charges clockwise around the reminder's emoji,
-// with the time left beside it. A ring that is due pulses. One SVG for the whole row.
+// with the time left beside it. A ring that is due has a halo. One SVG for the whole row.
 
 // Names and emoji can be a person's own, so they are escaped before they go into markup.
 export const escapeXml = (value: string): string => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -16,11 +16,8 @@ const STYLE = [
   // The drawing cannot see the app's theme, so it follows the system's.
   '.t{fill:#5f6368;font:12px system-ui,sans-serif}.track{stroke:#808080;stroke-opacity:.3}',
   '@media (prefers-color-scheme:dark){.t{fill:#b4bac0}}',
-  '.arc{animation:charge .9s cubic-bezier(.2,.8,.2,1)}',
-  '@keyframes charge{from{stroke-dasharray:0 100}}',
-  '.halo{animation:pulse 1.8s ease-in-out infinite}',
-  '@keyframes pulse{0%,100%{stroke-opacity:.15}50%{stroke-opacity:.6}}',
-  '@media (prefers-reduced-motion:reduce){.arc,.halo{animation:none}}',
+  // No animation: the band is drawn again whenever the host redraws it (about once a second while
+  // Claude works), and a drawing that animates replays from its start each time, which flickers.
 ].join('')
 
 export function cooldownSvg(items: readonly Item[], isPaused: boolean): { source: string; width: number; height: number; alt: string } {
@@ -33,7 +30,7 @@ export function cooldownSvg(items: readonly Item[], isPaused: boolean): { source
     const label = formatLeft(item.charge.leftMs)
 
     return [
-      item.charge.isReady && !isPaused ? `<circle class="halo" cx="${cx}" cy="${cy}" r="${R + 3}" fill="none" stroke="${color}" stroke-width="2"/>` : '',
+      item.charge.isReady && !isPaused ? `<circle class="halo" stroke-opacity=".5" cx="${cx}" cy="${cy}" r="${R + 3}" fill="none" stroke="${color}" stroke-width="2"/>` : '',
       `<circle class="track" cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke-width="3"/>`,
       // A ring at zero draws nothing: a round cap on no length would still show a dot.
       item.charge.fraction === 0
